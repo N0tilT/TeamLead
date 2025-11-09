@@ -1,0 +1,31 @@
+services:
+  server:
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
+    container_name: teamlead-server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+
+  client:
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
+    container_name: teamlead-client
+    build:
+      context: ./teamlead-client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    depends_on:
+      server:
+        condition: service_started
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge

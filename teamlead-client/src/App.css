@@ -1,0 +1,201 @@
+.h1,div{
+  color: black;
+}
+
+.app {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem 0;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.change-form {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+button {
+  background: #667eea;
+  color: white;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.results {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.result-section {
+  margin-bottom: 2rem;
+}
+
+.result-section h2 {
+  color: #333;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 0.5rem;
+}
+
+.summary-card,
+.description-card {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 6px;
+  border-left: 4px solid #667eea;
+}
+
+.tasks-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.task-card {
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 1rem;
+  background: #f8f9fa;
+}
+
+.task-meta {
+  display: flex;
+  justify-content: between;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.task-type {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.task-type.доработка {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.task-type.исправление {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.priority {
+  font-size: 0.8rem;
+}
+
+.priority.high {
+  color: #d32f2f;
+  font-weight: 600;
+}
+
+.priority.medium {
+  color: #f57c00;
+}
+
+.priority.low {
+  color: #388e3c;
+}
+
+.risks-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+}
+
+.risk-card {
+  background: #fff3cd;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.risk-metrics {
+  display: flex;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.risk-metrics span {
+  background: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.metric-card {
+  background: #667eea;
+  color: white;
+  padding: 1.5rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 2rem;
+  font-weight: bold;
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.acceptance-criteria ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.acceptance-criteria li {
+  margin-bottom: 0.25rem;
+}
