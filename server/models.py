@@ -24,6 +24,7 @@ class Risk(BaseModel):
 class AnalysisResult(BaseModel):
     change_summary: str
     tasks: List[Task]
+    keywords:Dict[str, Any]
     risks: List[Risk]
     overall_description: str
     metrics: Dict[str, Any]
