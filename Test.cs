@@ -2,87 +2,124 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace SequenceSolver
+namespace SequenceSolverFixed
 {
     class Program
     {
         static void Main(string[] args)
         {
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            
-            // Запускаем несколько тестов для проверки
-            RunTest(testId: 1, n: 4, rangeMin: 0, rangeMax: 10);
-            RunTest(testId: 2, n: 5, rangeMin: 10, rangeMax: 30);
-            RunTest(testId: 3, n: 6, rangeMin: -10, rangeMax: 10);
+            Console.WriteLine("Генерация гарантированно разрешимых последовательностей...\n");
+
+            // Тест 1: Короткая последовательность
+            RunGuaranteedTest(testId: 1, n: 4, startS: 10, maxStep: 4);
+
+            // Тест 2: Длинная последовательность с большими шагами
+            RunGuaranteedTest(testId: 2, n: 10, startS: -50, maxStep: 10);
+
+            // Тест 3: "Плоская" последовательность (шаги 0)
+            RunGuaranteedTest(testId: 3, n: 6, startS: 100, maxStep: 0);
             
             Console.WriteLine("\nНажмите любую клавишу для выхода...");
             Console.ReadKey();
         }
 
-        static void RunTest(int testId, int n, int rangeMin, int rangeMax)
+        static void RunGuaranteedTest(int testId, int n, int startS, int maxStep)
         {
-            Console.WriteLine($"\n--- ТЕСТ #{testId} ---");
+            Console.WriteLine($"--- ТЕСТ #{testId} ---");
 
-            // 1. Генерируем случайную неубывающую последовательность M
-            int[] M = GenerateSortedM(n, rangeMin, rangeMax);
-            Console.WriteLine($"Сгенерированная последовательность M ({M.Length} элементов):");
-            Console.WriteLine(string.Join(", ", M));
+            // 1. Генерируем ИСХОДНУЮ S (Source S), чтобы гарантировать существование решения
+            // Важно: Чтобы M были целыми, все элементы S должны иметь одинаковую четность.
+            // Поэтому мы прибавляем к S только четные числа.
+            int[] sourceS = GenerateValidS(n + 1, startS, maxStep);
+            
+            // 2. Вычисляем M на основе sourceS
+            int[] M = CalculateM(sourceS);
 
-            // 2. Находим все возможные последовательности S
-            // Для поиска границ перебора используем эвристику:
-            // S1 не может быть сильно больше M[0] (так как S1 <= M1)
-            // и не может быть бесконечно малым. 
-            // Возьмем широкий диапазон вокруг M[0] для демонстрации.
-            int searchRadius = 1000; 
-            int startSearch = M[0] - searchRadius;
-            int endSearch = M[0] + searchRadius;
+            Console.WriteLine("Дано M (средние значения):");
+            Console.WriteLine($"[{string.Join(", ", M)}]");
 
-            List<int[]> validSequences = FindAllValidSequences(M, startSearch, endSearch);
+            // 3. Пытаемся восстановить ВСЕ возможные S, зная только M
+            // Диапазон поиска S1 берем с запасом вокруг исходного S[0], так как мы его знаем
+            // но в реальной задаче это был бы просто широкий перебор.
+            int searchRadius = 500;
+            int minSearch = sourceS[0] - searchRadius;
+            int maxSearch = sourceS[0] + searchRadius;
 
-            // 3. Вывод результатов
-            int count = validSequences.Count;
+            List<int[]> foundSequences = FindAllValidSequences(M, minSearch, maxSearch);
+
+            // 4. Анализ результатов
+            int count = foundSequences.Count;
+            // k - это параметр из задачи (количество решений = k + 1)
             int k = count > 0 ? count - 1 : 0;
+
+            Console.WriteLine($"\nНайдено возможных последовательностей S: {count}");
+            Console.WriteLine($"Параметр k: {k}");
 
             if (count > 0)
             {
-                Console.WriteLine($"\nНайдено валидных последовательностей S: {count}");
-                Console.WriteLine($"Следовательно, значение k = {k} (так как решений k+1).");
+                Console.WriteLine($"\nДиапазон первых элементов S1: от {foundSequences.First()[0]} до {foundSequences.Last()[0]}");
                 
-                Console.WriteLine("\nПримеры найденных последовательностей S (первые 3 и последние 3):");
-                PrintSamples(validSequences);
+                Console.WriteLine("\nПримеры найденных S:");
+                // Выводим минимальное решение
+                Console.WriteLine($"Min (S1={foundSequences.First()[0]}): [{string.Join(", ", foundSequences.First())}]");
                 
-                // Проверка граничных значений S1
-                int minS1 = validSequences.First()[0];
-                int maxS1 = validSequences.Last()[0];
-                Console.WriteLine($"\nДиапазон допустимых значений S1: [{minS1}; {maxS1}]");
+                // Если есть, выводим решение, которое совпадает с исходным (для проверки)
+                var originalMatch = foundSequences.FirstOrDefault(s => s.SequenceEqual(sourceS));
+                if (originalMatch != null)
+                {
+                    Console.WriteLine($"Src (S1={originalMatch[0]}): [{string.Join(", ", originalMatch)}]  <-- Исходная");
+                }
+
+                // Выводим максимальное решение
+                if (count > 1)
+                {
+                    Console.WriteLine($"Max (S1={foundSequences.Last()[0]}): [{string.Join(", ", foundSequences.Last())}]");
+                }
             }
             else
             {
-                Console.WriteLine("\nВалидных последовательностей не найдено в заданном диапазоне поиска.");
+                Console.WriteLine("ОШИБКА: Решения не найдены (невозможно при методе обратной генерации).");
             }
+            Console.WriteLine(new string('-', 40));
+            Console.WriteLine();
         }
 
-        // --- ФУНКЦИИ ---
+        // --- ГЕНЕРАТОРЫ И ЛОГИКА ---
 
         /// <summary>
-        /// Генерирует неубывающую последовательность целых чисел M длины n
+        /// Генерирует валидную S: неубывающую, одной четности.
         /// </summary>
-        static int[] GenerateSortedM(int n, int min, int max)
+        static int[] GenerateValidS(int length, int startValue, int maxStepEven)
         {
             Random rnd = new Random();
-            int[] m = new int[n];
-            for (int i = 0; i < n; i++)
+            int[] s = new int[length];
+            s[0] = startValue;
+
+            for (int i = 1; i < length; i++)
             {
-                m[i] = rnd.Next(min, max + 1);
+                // Генерируем случайный ЧЕТНЫЙ шаг (0, 2, 4...), 
+                // чтобы сохранить четность всей последовательности.
+                // Если четность разная, M не будут целыми числами.
+                int step = rnd.Next(0, (maxStepEven / 2) + 1) * 2; 
+                s[i] = s[i - 1] + step;
             }
-            Array.Sort(m); // Гарантируем неубывание
+            return s;
+        }
+
+        static int[] CalculateM(int[] S)
+        {
+            int[] m = new int[S.Length - 1];
+            for (int i = 0; i < m.Length; i++)
+            {
+                // M[i] = (S[i] + S[i+1]) / 2
+                m[i] = (S[i] + S[i + 1]) / 2;
+            }
             return m;
         }
 
-        /// <summary>
-        /// Восстанавливает S по M и заданному начальному элементу s1.
-        /// Возвращает null, если полученная последовательность не является неубывающей.
-        /// </summary>
+        // --- РЕШАТЕЛЬ (SOLVER) ---
+
         static int[] TryRestoreS(int[] M, int s1)
         {
             int n = M.Length;
@@ -91,26 +128,21 @@ namespace SequenceSolver
 
             for (int i = 0; i < n; i++)
             {
-                // Формула: Mi = (Si + Si+1) / 2  =>  2*Mi = Si + Si+1  =>  Si+1 = 2*Mi - Si
+                // Si+1 = 2*Mi - Si
                 S[i + 1] = 2 * M[i] - S[i];
 
-                // Проверка условия неубывания на лету
+                // Проверка неубывания: Si <= Si+1
                 if (S[i + 1] < S[i])
                 {
-                    return null; // Последовательность нарушила условие
+                    return null; 
                 }
             }
-
             return S;
         }
 
-        /// <summary>
-        /// Перебирает варианты S1 и находит все валидные последовательности
-        /// </summary>
         static List<int[]> FindAllValidSequences(int[] M, int searchMin, int searchMax)
         {
             var results = new List<int[]>();
-
             for (int s1 = searchMin; s1 <= searchMax; s1++)
             {
                 int[] s = TryRestoreS(M, s1);
@@ -120,23 +152,6 @@ namespace SequenceSolver
                 }
             }
             return results;
-        }
-
-        static void PrintSamples(List<int[]> seqs)
-        {
-            int total = seqs.Count;
-            if (total <= 6)
-            {
-                foreach (var s in seqs) Console.WriteLine($"S1={s[0]}: [{string.Join(", ", s)}]");
-            }
-            else
-            {
-                for (int i = 0; i < 3; i++) 
-                    Console.WriteLine($"S1={seqs[i][0]}: [{string.Join(", ", seqs[i])}]");
-                Console.WriteLine("...");
-                for (int i = total - 3; i < total; i++) 
-                    Console.WriteLine($"S1={seqs[i][0]}: [{string.Join(", ", seqs[i])}]");
-            }
         }
     }
 }
