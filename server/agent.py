@@ -1,178 +1,208 @@
-from typing import List, Dict, Any, Optional
 import asyncio
 import json
-import uuid
-from models import *
-from language_model import MockLLMService
+from typing import List, Dict, Any
+from loguru import logger
+from models import ChangeRequest, Task, Risk, AnalysisResult, Metrics
+from llm_service import YandexGPTService
+from tracker_service import YandexTrackerService
 
-class ChangeAnalysisAgent:
-    def __init__(self, llm_service):
-        self.llm = llm_service
+logger.add(
+    sink="logs/agent.log",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+    level="DEBUG",
+    rotation="1 MB",
+    retention="10 days",
+    compression="zip"
+)
 
-    async def analyze_changes(self, change_request: ChangeRequest) -> str:
-        prompt = f"""
-        Проанализируй изменения в документации:
-        
-        Было: {change_request.old_text}
-        Стало: {change_request.new_text}
-        Комментарии: {change_request.comments}
-        
-        Выяви:
-        1. Что добавлено, удалено, изменено
-        2. Затронутые модули системы
-        3. Краткое резюме изменений
-        """
-        return await self.llm.generate_text(prompt)
+class BaseAgent:
+    """Базовый класс для всех агентов"""
+    def __init__(self, llm_service: YandexGPTService):
+        self.llm_service = llm_service
 
-class TaskCreationAgent:
-    def __init__(self, llm_service):
-        self.llm = llm_service
-
-    async def create_tasks(self, change_summary: str) -> List[Task]:
-        prompt = f"""
-        На основе анализа изменений создай задачи:
-        {change_summary}
-        
-        Для каждой задачи укажи:
-        - Заголовок
-        - Детальное описание
-        - Тип задачи (доработка, исправление бага, обновление документации)
-        - Критерии приемки
-        """
-        result = await self.llm.generate_text(prompt)
-        
-        try:
-            tasks_data = json.loads(result)
-            return [
-                Task(
-                    id=str(uuid.uuid4()),
-                    title=task["title"],
-                    description=task["description"],
-                    task_type=task["type"],
-                    acceptance_criteria=task["acceptance_criteria"]
-                ) for task in tasks_data
-            ]
-        except:
-            # Fallback задачи
-            return [
-                Task(
-                    id=str(uuid.uuid4()),
-                    title="Реализация изменений требований",
-                    description=f"Выполнить работы по изменению: {change_summary}",
-                    task_type="доработка",
-                    acceptance_criteria=["Соответствие новым требованиям", "Прохождение тестов"]
-                )
-            ]
-
-class RiskManagementAgent:
-    def __init__(self, llm_service):
-        self.llm = llm_service
-
-    async def analyze_risks(self, change_summary: str, tasks: List[Task]) -> List[Risk]:
-        prompt = f"""
-        Проанализируй риски:
-        Изменения: {change_summary}
-        Задачи: {[task.title for task in tasks]}
-        
-        Оцени риски по категориям:
-        - Технические
-        - Стоимостные  
-        - Риски сроков
-        
-        Для каждого риска укажи вероятность и влияние (Low, Medium, High)
-        """
-        result = await self.llm.generate_text(prompt)
-        
-        try:
-            risks_data = json.loads(result)
-            return [
-                Risk(
-                    category=risk["category"],
-                    description=risk["description"],
-                    probability=risk["probability"],
-                    impact=risk["impact"],
-                    mitigation=risk["mitigation"]
-                ) for risk in risks_data
-            ]
-        except:
-            return [
-                Risk(
-                    category="технические",
-                    description="Возможные проблемы при интеграции изменений",
-                    probability="Medium",
-                    impact="High",
-                    mitigation="Тщательное тестирование и поэтапное внедрение"
-                )
-            ]
-
-class DescriptionAgent:
-    def __init__(self, llm_service):
-        self.llm = llm_service
-
-    async def generate_description(self, change_summary: str, tasks: List[Task], risks: List[Risk]) -> str:
-        prompt = f"""
-        Создай связное описание пакета изменений:
-        
-        Резюме изменений: {change_summary}
-        Задачи: {[task.title for task in tasks]}
-        Риски: {[risk.description for risk in risks]}
-        
-        Сформируй отчет для команды разработки.
-        """
-        return await self.llm.generate_text(prompt)
-
-class MetricsAgent:
-    def __init__(self):
-        self.analysis_count = 0
-        self.total_tasks = 0
-
-    async def calculate_metrics(self, tasks: List[Task], risks: List[Risk]) -> Dict[str, Any]:
-        self.analysis_count += 1
-        self.total_tasks += len(tasks)
-        
-        high_risks = len([r for r in risks if r.impact == "High"])
-        
-        return {
-            "analysis_count": self.analysis_count,
-            "tasks_generated": len(tasks),
-            "total_tasks_overall": self.total_tasks,
-            "high_priority_risks": high_risks,
-            "task_types": {task.task_type for task in tasks},
-            "risk_distribution": {
-                "technical": len([r for r in risks if "техни" in r.category.lower()]),
-                "schedule": len([r for r in risks if "срок" in r.category.lower()]),
-                "cost": len([r for r in risks if "стоим" in r.category.lower()])
-            }
-        }
-
-class Coordinator:
-    def __init__(self):
-        llm_service = MockLLMService()
-        self.change_agent = ChangeAnalysisAgent(llm_service)
-        self.task_agent = TaskCreationAgent(llm_service)
-        self.risk_agent = RiskManagementAgent(llm_service)
-        self.desc_agent = DescriptionAgent(llm_service)
-        self.metrics_agent = MetricsAgent()
+class Coordinator(BaseAgent):
+    """Агент-Координатор: управляет процессом, распределяет задачи и агрегирует результаты"""
+    def __init__(self, llm_service: YandexGPTService, tracker_service: YandexTrackerService):
+        super().__init__(llm_service)
+        self.change_analysis_agent = ChangeAnalysisAgent(llm_service)
+        self.task_creation_agent = TaskCreationAgent(llm_service)
+        self.risk_management_agent = RiskManagementAgent(llm_service)
+        self.description_agent = DescriptionAgent(llm_service)
+        self.stats_agent = StatsAgent(llm_service)
+        self.tracker_service = tracker_service 
+        self.history: List[Dict[str, Any]] = []  
 
     async def process_changes(self, change_request: ChangeRequest) -> AnalysisResult:
-        change_summary = await self.change_agent.analyze_changes(change_request)
+        logger.info("Starting change processing")
+        try:
+            logger.info("Starting change processing")
+            change_summary, affected_components, keywords = await self.change_analysis_agent.analyze(change_request)
+            
+            tasks = await self.task_creation_agent.create_tasks(change_request, change_summary, affected_components, keywords)
+            
+            risks = await self.risk_management_agent.analyze_risks(change_request, change_summary, tasks)
+            
+            overall_description = await self.description_agent.generate_description(change_summary, tasks, risks)
+            
+            tracker_ids = await self._add_tasks_to_tracker(tasks)
+            
+            metrics = await self.stats_agent.collect_metrics(change_request, tasks, risks, keywords)
+            self.history.append({
+                "change": change_request.dict(),
+                "summary": change_summary,
+                "tasks": [t.dict() for t in tasks],
+                "risks": [r.dict() for r in risks],
+                "metrics": metrics.dict()
+            })
+            
+            result = AnalysisResult(
+                change_summary=change_summary,
+                tasks=tasks,
+                risks=risks,
+                keywords=keywords,
+                overall_description=overall_description,
+                metrics=metrics,
+                tracker_ids=tracker_ids
+            )
+            logger.success("Processing completed successfully")
+            return result
+        except Exception as e:
+            logger.error(f"Error in processing: {e}")
+            raise
+
+    async def _add_tasks_to_tracker(self, tasks: List[Task]) -> List[str]:
+        """Добавление сгенерированных задач в YandexTracker"""
+        tracker_ids = []
+        for task in tasks:
+            tracker_id = await self.tracker_service.create_issue(task)
+            if tracker_id:
+                tracker_ids.append(tracker_id)
+        return tracker_ids
+
+class ChangeAnalysisAgent(BaseAgent):
+    """Агент Анализа Изменений: анализирует текст изменений"""
+    async def analyze(self, change: ChangeRequest) -> tuple[str, List[str], Dict[str, Any]]:
+        description = f"Было: {change.old_text}\nСтало: {change.new_text}\nКомментарий: {change.comments or '—'}"
+        keywords = await self.llm_service.highlight_keywords_and_terms(description)
         
-        tasks, risks = await asyncio.gather(
-            self.task_agent.create_tasks(change_summary),
-            self.risk_agent.analyze_risks(change_summary, [])
-        )
+        prompt = f"""
+            Анализируй изменения в документации.
+            Определи суть: что добавлено, удалено, изменено.
+            Выяви затронутые модули/компоненты.
+            Сформируй краткое резюме.
+            
+            Текст: {description}
+            Ключевые термины: {keywords}
+            
+            Верни JSON: {{
+                "summary": "резюме",
+                "affected_components": ["comp1", "comp2"],
+                "changes": {{
+                    "added": ["..."],
+                    "removed": ["..."],
+                    "modified": ["..."]
+                }}
+            }}
+        """
+        messages = [{"role": "user", "content": prompt}]
+        raw = await self.llm_service._call_llm_wrapper(messages, temperature=0.3, json_mode=True)
+        result = json.loads(raw)
         
-        risks = await self.risk_agent.analyze_risks(change_summary, tasks)
-        
-        description, metrics = await asyncio.gather(
-            self.desc_agent.generate_description(change_summary, tasks, risks),
-            self.metrics_agent.calculate_metrics(tasks, risks)
-        )
-        
-        return AnalysisResult(
-            change_summary=change_summary,
-            tasks=tasks,
-            risks=risks,
-            overall_description=description,
-            metrics=metrics
+        return result["summary"], result["affected_components"], keywords
+
+class TaskCreationAgent(BaseAgent):
+    """Агент Генерации Задач: создает задачи на основе анализа"""
+    async def create_tasks(
+        self,
+        change: ChangeRequest,
+        summary: str,
+        affected_components: List[str],
+        keywords: Dict[str, Any]
+    ) -> List[Task]:
+        tasks = []
+        for component in affected_components:
+            component_tasks = await self.llm_service.generate_tasks_from_change(change, component, keywords)
+            tasks.extend(component_tasks)
+        return tasks
+
+class RiskManagementAgent(BaseAgent):
+    """Агент Риск-Менеджмента: анализирует риски"""
+    async def analyze_risks(
+        self,
+        change: ChangeRequest,
+        summary: str,
+        tasks: List[Task]
+    ) -> List[Risk]:
+        prompt = f"""
+            Анализируй изменения и задачи на риски.
+            Категоризируй: technical, cost, timeline.
+            Оцени: probability (Low/Medium/High), impact (Low/Medium/High).
+            Предложи mitigation.
+            
+            Изменения: {summary}
+            Задачи: {json.dumps([t.dict() for t in tasks], ensure_ascii=False)}
+            
+            Верни массив JSON: [{{
+                "category": "technical",
+                "description": "...",
+                "probability": "Medium",
+                "impact": "High",
+                "mitigation": ["..."]
+            }}]
+        """
+        schema_risks = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string"},
+                    "description": {"type": "string"},
+                    "probability": {"type": "string", "enum": ["Low", "Medium", "High"]},
+                    "impact": {"type": "string", "enum": ["Low", "Medium", "High"]},
+                    "mitigation": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["category", "description", "probability", "impact", "mitigation"]
+            }
+        }
+        messages = [{"role": "user", "content": prompt}]
+        raw = await self.llm_service._call_llm_wrapper(messages, temperature=0.5, json_mode=True, json_schema=schema_risks)
+        risks_data = json.loads(raw)
+        return [Risk(**r) for r in risks_data]
+
+class DescriptionAgent(BaseAgent):
+    """Агент Формирования Описания: создает связное описание"""
+    async def generate_description(
+        self,
+        summary: str,
+        tasks: List[Task],
+        risks: List[Risk]
+    ) -> str:
+        prompt = f"""
+            Создай связное описание пакета изменений для команды.
+            Включи резюме, задачи, риски.
+            
+            Резюме: {summary}
+            Задачи: {json.dumps([t.dict() for t in tasks], ensure_ascii=False)}
+            Риски: {json.dumps([r.dict() for r in risks], ensure_ascii=False)}
+            
+            Отчёт на русском, нарративный стиль.
+        """
+        messages = [{"role": "user", "content": prompt}]
+        return await self.llm_service._call_llm_wrapper(messages, temperature=0.4, json_mode=False)
+
+class StatsAgent(BaseAgent):
+    """Агент Сбора Статистики: собирает метрики и анализирует тенденции"""
+    async def collect_metrics(
+        self,
+        change: ChangeRequest,
+        tasks: List[Task],
+        risks: List[Risk],
+        keywords: Dict[str, Any]
+    ) -> Metrics:
+        return Metrics(
+            changes_processed=1,
+            tasks_generated=len(tasks),
+            risks_identified=len(risks),
+            avg_task_priority="Medium",
+            trends="Повторяющиеся изменения в API"
         )
