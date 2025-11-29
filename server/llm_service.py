@@ -169,9 +169,9 @@ class YandexGPTService:
                     "id": "<uuid4>",
                     "title": "Краткое название",
                     "description": "Что нужно сделать",
-                    "task_type": "Development|Refactoring|Testing|Documentation|Bugfix",
+                    "task_type": "task|bug|newFeature",
                     "acceptance_criteria": ["критерий 1", "критерий 2"],
-                    "priority": "High|Medium|Low"
+                    "priority": "minor|normal|critical"
                     }}
 
                     Верни ТОЛЬКО массив JSON. Ничего больше.
@@ -184,9 +184,9 @@ class YandexGPTService:
                     "id": {"type": "string"},
                     "title": {"type": "string"},
                     "description": {"type": "string"},
-                    "task_type": {"type": "string", "enum": ["Development", "Refactoring", "Testing", "Documentation", "Bugfix"]},
+                    "task_type": {"type": "string", "enum": ["task","bug","newFeature"]},
                     "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
-                    "priority": {"type": "string", "enum": ["High", "Medium", "Low"]},
+                    "priority": {"type": "string", "enum": ["minor","normal","critical"]},
                 },
                 "required": ["id", "title", "description", "task_type", "acceptance_criteria", "priority"],
                 "additionalProperties": False,

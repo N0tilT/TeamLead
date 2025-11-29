@@ -11,7 +11,7 @@ class YandexTrackerService:
         self.base_url = base_url
         self.headers = {
             "Authorization": f"OAuth {self.oauth_token}",
-            "X-Org-ID": self.org_id,
+            "X-Cloud-Org-ID": self.org_id,
             "Content-Type": "application/json"
         }
 
@@ -20,12 +20,11 @@ class YandexTrackerService:
         payload = {
             "summary": task.title,
             "queue": self.queue_key,
-            "description": task.description,
+            "description": task.description+f"\nКритерии приёмки:\n{"\n".join(task.acceptance_criteria)}",
             "type": self._map_task_type(task.task_type),
             "priority": task.priority.lower(),
-            "markupType": "md" if "markdown" in task.description.lower() else None,
+            "markupType": "md",
         }
-        
         async with aiohttp.ClientSession() as session:
             async with session.post(f"{self.base_url}/issues/", headers=self.headers, json=payload) as response:
                 if response.status == 201:
