@@ -7,9 +7,17 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://server:8080',
+        target: 'http://server:8000',
         changeOrigin: true,
-        rewrite: (path) => path
+        secure: false,
+        logLevel: 'debug'
+      },
+      '/ws': {
+        target: 'ws://server:8000', 
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        logLevel: 'debug'
       }
     }
   }

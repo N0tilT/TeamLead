@@ -1,4 +1,97 @@
 services:
+  redis:
+    image: redis:7.0-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - backend
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - backend
+
+  analysis_worker:
+    build: ./server
+    depends_on:
+      - redis
+      - server
+    command: ["python", "analysis_worker.py"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    deploy:
+      replicas: 1
+    networks:
+      - backend
+
+  solver_conservative:
+    build: ./server
+    depends_on:
+      - redis
+      - server
+    command: ["python", "solver_worker.py"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - SOLVER_STYLE=conservative
+    deploy:
+      replicas: 1
+    networks:
+      - backend
+
+  solver_innovative:
+    build: ./server
+    depends_on:
+      - redis
+      - server
+    command: ["python", "solver_worker.py"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - SOLVER_STYLE=innovative
+    deploy:
+      replicas: 1
+    networks:
+      - backend
+
+  solver_efficient:
+    build: ./server
+    depends_on:
+      - redis
+      - server
+    command: ["python", "solver_worker.py"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - SOLVER_STYLE=efficient
+    deploy:
+      replicas: 1
+    networks:
+      - backend
+
+  evaluator_worker:
+    build: ./server
+    depends_on:
+      - redis
+      - server
+    command: ["python", "evaluator_worker.py"]
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - NUM_SOLVERS=3
+    deploy:
+      replicas: 1
+    networks:
+      - backend
+
   server:
     stop_grace_period: 30s
     stop_signal: SIGTERM
@@ -6,8 +99,12 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
     ports:
-      - "8080:8080"
+      - "8000:8000"
     networks:
       - backend
 
@@ -29,3 +126,7 @@ services:
 networks:
   backend:
     driver: bridge
+    
+volumes:
+  redis-data:
+  redisinsight-data:

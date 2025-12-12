@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
@@ -10,14 +10,18 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [trackingId, setTrackingId] = useState(null);
+  const [ws, setWs] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setResult(null);
+    setTrackingId(null);
     
     try {
-      const response = await fetch('/api/analyze', {
+      const response = await fetch('/api/enqueue', { 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -30,14 +34,41 @@ function App() {
       }
       
       const data = await response.json();
-      setResult(data);
+      setTrackingId(data.tracking_id);
     } catch (error) {
       console.error('Error:', error);
-      setError('Ошибка при анализе изменений. Проверьте подключение к серверу.');
+      setError('Ошибка при отправке изменений. Проверьте подключение к серверу.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (trackingId) {
+      const websocket = new WebSocket(`ws://${window.location.host}/ws/${trackingId}`);
+      websocket.onopen = () => console.log('WebSocket connected');
+      websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data); 
+          setResult(data); 
+        } catch (err) {
+          console.error('Invalid WS data:', err);
+          setError('Ошибка при получении обновлений.');
+        }
+      };
+      websocket.onclose = () => console.log('WebSocket closed');
+      websocket.onerror = (err) => {
+        console.error('WS error:', err);
+        setError('Ошибка WebSocket. Попробуйте снова.');
+      };
+
+      setWs(websocket);
+
+      return () => {
+        websocket.close();
+      };
+    }
+  }, [trackingId]);
 
   const RiskBadge = ({ risk }) => {
     const getRiskColor = (impact) => {
@@ -85,7 +116,7 @@ function App() {
     );
   };
 
-  const TaskCard = ({ task }) => {
+  const TaskCard = ({ task, trackerId }) => {
     const getTaskTypeColor = (type) => {
       switch (type) {
         case 'доработка': return '#2196F3';
@@ -103,6 +134,8 @@ function App() {
         default: return '#9E9E9E';
       }
     };
+
+    const trackerLink = trackerId ? `https://tracker.yandex.ru/${trackerId}` : '#';  // Формирование ссылки
 
     return (
       <div className="task-card">
@@ -132,6 +165,11 @@ function App() {
             ))}
           </ul>
         </div>
+        {trackerId && (
+          <a href={trackerLink} target="_blank" rel="noopener noreferrer" className="tracker-link">
+            Открыть задачу в Yandex Tracker
+          </a>
+        )}
       </div>
     );
   };
@@ -210,6 +248,12 @@ function App() {
           </div>
         )}
 
+        {trackingId && !result && (
+          <div className="loading-message">
+            Ожидание результатов... (Tracking ID: {trackingId})
+          </div>
+        )}
+
         {result && (
           <div className="results">
             <section className="result-section">
@@ -252,8 +296,12 @@ function App() {
                 <span className="badge">{result.tasks.length}</span>
               </div>
               <div className="tasks-grid">
-                {result.tasks.map((task) => (
-                  <TaskCard key={task.id} task={task} />
+                {result.tasks.map((task, index) => (
+                  <TaskCard 
+                    key={task.id} 
+                    task={task} 
+                    trackerId={result.tracker_ids ? result.tracker_ids[index] : null}  // Сопоставление tracker_id с task
+                  />
                 ))}
               </div>
             </section>
