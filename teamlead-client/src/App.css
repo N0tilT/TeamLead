@@ -199,3 +199,71 @@ button:disabled {
 .acceptance-criteria li {
   margin-bottom: 0.25rem;
 }
+
+.main-layout {
+  display: flex;
+  height: calc(100vh - 70px); /* Высота за вычетом хедера */
+  overflow: hidden;
+}
+
+.left-panel {
+  flex: 0 0 450px;
+  padding: 20px;
+  overflow-y: auto;
+  border-right: 1px solid #e0e0e0;
+  background: #f9f9f9;
+}
+
+.right-panel {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.history-container {
+  display: flex;
+  width: 100%;
+}
+
+.history-sidebar {
+  flex: 0 0 300px;
+  border-right: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.history-item:hover { background: #f0f7ff; }
+.history-item.active { background: #e3f2fd; border-left: 4px solid #1976d2; }
+
+.item-date { font-size: 0.8rem; color: #666; margin-bottom: 4px; }
+.item-summary { font-size: 0.9rem; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.history-details {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.close-details {
+  position: sticky;
+  top: 0;
+  float: right;
+  z-index: 10;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 5px 10px;
+  cursor: pointer;
+}

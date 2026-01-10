@@ -1,98 +1,105 @@
 services:
-  redis:
+  teamlead-redis:
+    container_name: teamlead-redis
     image: redis:7.0-alpine
     ports:
-      - "6379:6379"
+      - "6378:6379"
     volumes:
-      - redis-data:/data
+      - teamlead-redis-data:/data
     command: redis-server --appendonly yes
     networks:
-      - backend
+      - teamlead-backend
 
-  redis-commander:
+  teamlead-redis-commander:
     image: rediscommander/redis-commander:latest
-    container_name: redis-commander
+    container_name: teamlead-redis-commander
     environment:
-      - REDIS_HOSTS=local:redis:6379
+      - REDIS_HOSTS=local:teamlead-redis:6379
       - HTTP_USER=admin
       - HTTP_PASSWORD=admin
     ports:
       - "8081:8081"
     depends_on:
-      - redis
+      - teamlead-redis
     networks:
-      - backend
+      - teamlead-backend
 
-  analysis_worker:
+  teamlead-analysis_worker:
+    container_name: teamlead-analysis_worker
     build: ./server
     depends_on:
-      - redis
-      - server
+      - teamlead-redis
+      - teamlead-server
     command: ["python", "analysis_worker.py"]
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://teamlead-redis:6379/0
     deploy:
       replicas: 1
     networks:
-      - backend
+      - teamlead-backend
+      - postgres
 
-  solver_conservative:
+  teamlead-solver_conservative:
+    container_name: teamlead-solver_conservative
     build: ./server
     depends_on:
-      - redis
-      - server
+      - teamlead-redis
+      - teamlead-server
     command: ["python", "solver_worker.py"]
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://teamlead-redis:6379/0
       - SOLVER_STYLE=conservative
     deploy:
       replicas: 1
     networks:
-      - backend
+      - teamlead-backend
 
-  solver_innovative:
+  teamlead-solver_innovative:
+    container_name: teamlead-solver_innovative
     build: ./server
     depends_on:
-      - redis
-      - server
+      - teamlead-redis
+      - teamlead-server
     command: ["python", "solver_worker.py"]
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://teamlead-redis:6379/0
       - SOLVER_STYLE=innovative
     deploy:
       replicas: 1
     networks:
-      - backend
+      - teamlead-backend
 
-  solver_efficient:
+  teamlead-solver_efficient:
+    container_name: teamlead-solver_efficient
     build: ./server
     depends_on:
-      - redis
-      - server
+      - teamlead-redis
+      - teamlead-server
     command: ["python", "solver_worker.py"]
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://teamlead-redis:6379/0
       - SOLVER_STYLE=efficient
     deploy:
       replicas: 1
     networks:
-      - backend
+      - teamlead-backend
 
-  evaluator_worker:
+  teamlead-evaluator_worker:
+    container_name: teamlead-evaluator_worker
     build: ./server
     depends_on:
-      - redis
-      - server
+      - teamlead-redis
+      - teamlead-server
     command: ["python", "evaluator_worker.py"]
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://teamlead-redis:6379/0
       - NUM_SOLVERS=3
     deploy:
       replicas: 1
     networks:
-      - backend
+      - teamlead-backend
 
-  server:
+  teamlead-server:
     stop_grace_period: 30s
     stop_signal: SIGTERM
     container_name: teamlead-server
@@ -100,15 +107,16 @@ services:
       context: ./server
       dockerfile: Dockerfile
     depends_on:
-      - redis
+      - teamlead-redis
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://teamlead-redis:6379/0
     ports:
-      - "8000:8000"
+      - "8001:8000"
     networks:
-      - backend
+      - teamlead-backend
+      - postgres
 
-  client:
+  teamlead-client:
     stop_grace_period: 30s
     stop_signal: SIGTERM
     container_name: teamlead-client
@@ -116,17 +124,19 @@ services:
       context: ./teamlead-client
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "5174:5173"
     depends_on:
-      server:
+      teamlead-server:
         condition: service_started
     networks:
-      - backend
+      - teamlead-backend
 
 networks:
-  backend:
+  teamlead-backend:
     driver: bridge
+  postgres:
+    external: true
+    name: shared_postgres
     
 volumes:
-  redis-data:
-  redisinsight-data:
+  teamlead-redis-data:

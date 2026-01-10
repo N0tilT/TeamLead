@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 import uuid
 
 class ChangeRequest(BaseModel):
@@ -30,6 +31,8 @@ class Metrics(BaseModel):
     trends: str
 
 class AnalysisResult(BaseModel):
+    id: int = 0
+    tracking_id: str = ""
     change_summary: str
     tasks: List[Task]
     risks: List[Risk] = []
@@ -37,3 +40,4 @@ class AnalysisResult(BaseModel):
     overall_description: str = ""
     metrics: Metrics = Metrics(changes_processed=0, tasks_generated=0, risks_identified=0, avg_task_priority="", trends="")
     tracker_ids: List[str] = [] 
+    created_at: datetime = datetime.now()

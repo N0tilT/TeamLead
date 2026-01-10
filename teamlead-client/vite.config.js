@@ -7,13 +7,13 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://server:8000',
+        target: 'http://teamlead-server:8000',
         changeOrigin: true,
         secure: false,
         logLevel: 'debug'
       },
       '/ws': {
-        target: 'ws://server:8000', 
+        target: 'ws://teamlead-server:8000', 
         changeOrigin: true,
         secure: false,
         ws: true,

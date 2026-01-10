@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic_core import to_jsonable_python
 from datetime import datetime
 import uuid
 import os 
@@ -12,6 +13,22 @@ from models import ChangeRequest
 from llm_service import YandexGPTService
 from tracker_service import YandexTrackerService
 from agent import Coordinator
+
+from database import DatabaseConfig,DatabaseConnection
+from migrations import MigrationManager
+from analysis_repository import AnalysisRepository
+
+db_config= DatabaseConfig(
+    'teamlead-analysis',
+    'postgres',
+    'postgres',
+    '123Secret_a',
+    5432
+)
+db_connection = DatabaseConnection(db_config)
+migration_manager = MigrationManager(db_config)
+migration_manager.setup()
+repository = AnalysisRepository(db_connection)
 
 load_dotenv()
 
@@ -33,20 +50,34 @@ llm_service = YandexGPTService(
 tracker_service = YandexTrackerService(
     oauth_token=os.getenv("YANDEX_OAUTH_TOKEN", "YOUR_OAUTH_TOKEN"),
     org_id=os.getenv("YANDEX_ORG_ID", "YOUR_ORG_ID"),
-    queue_key=os.getenv("YANDEX_QUEUE_KEY", "YOUR_QUEUE_KEY")
+    queue_key=os.getenv("YANDEX_QUEUE_KEY")
 )
 
 redis_conn = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 coordinator = Coordinator(llm_service, tracker_service, redis_conn)
 ANALYSIS_CHANNEL = "analysis_result"
 
+
 @app.post("/api/enqueue")
 async def enqueue_change(change_request: ChangeRequest):
     tracking_id = str(uuid.uuid4())
+    print(tracking_id)
     payload = json.dumps({"tracking_id": tracking_id, "change": change_request.dict()})
+    print(payload)
     await redis_conn.rpush("doc_queue", payload)
-    await redis_conn.publish("new_doc", json.dumps({"tracking_id": tracking_id}))
+    await redis_conn.publish("new_doc", payload)
     return {"status": "enqueued", "tracking_id": tracking_id}
+
+@app.get("/api/result/{tracking_id}")
+async def get_result(tracking_id: str):
+    res = repository.get_by_tracking_id(tracking_id=tracking_id)
+    return res
+
+@app.get("/api/result-list")
+async def get_result_list():
+    res = repository.get_all()
+    return json.dumps(res, default=to_jsonable_python)
+
 
 @app.get("/api/health")
 async def health_check():
@@ -55,10 +86,8 @@ async def health_check():
 @app.websocket("/ws/{tracking_id}")
 async def websocket_endpoint(websocket: WebSocket, tracking_id: str):
     await websocket.accept()
-    
     pubsub = redis_conn.pubsub()
     await pubsub.subscribe(ANALYSIS_CHANNEL)
-    
     try:
         async for message in pubsub.listen():
             if message['type'] == 'message':
@@ -76,10 +105,6 @@ async def websocket_endpoint(websocket: WebSocket, tracking_id: str):
 
 @app.on_event("startup")
 async def startup_event():
-    await redis_conn.publish(ANALYSIS_CHANNEL, json.dumps({
-        "result": "Server started", 
-        "tracking_id": "system"
-    }))
     print("Server started, Redis connected")
 
 @app.on_event("shutdown")
