@@ -35,14 +35,14 @@ services:
       - "-c"
       - "pg_stat_statements.track=all"
     environment:
-      POSTGRES_DB: "postgresdb"
+      POSTGRES_DB: "teamlead-analysis"
       POSTGRES_USER: "postgres"
-      POSTGRES_PASSWORD: "123Secret_a"
+      POSTGRES_PASSWORD: "postgres"
       PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgresdb" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d teamlead-analysis" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,10 +54,7 @@ services:
           cpus: '1'
           memory: 4G
     networks:
-      postgres:
-        aliases:
-          - postgres
-
+      - teamlead-backend
 
   pgadmin:
     stop_grace_period: 30s
@@ -66,7 +63,7 @@ services:
     image: dpage/pgadmin4:7.2
     environment:
       PGADMIN_DEFAULT_EMAIL: "user@user.com"
-      PGADMIN_DEFAULT_PASSWORD: "123Secret_a"
+      PGADMIN_DEFAULT_PASSWORD: "postgres"
       PGADMIN_CONFIG_SERVER_MODE: "False"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
@@ -79,13 +76,12 @@ services:
           cpus: '0.5'
           memory: 1G
     networks:
-      - postgres
+      - teamlead-backend
 
 volumes:
   postgres-data:
   pgadmin-data:
 
 networks:
-  postgres:
+  backend:
     driver: bridge
-    name: shared_postgres

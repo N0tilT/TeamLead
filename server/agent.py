@@ -72,7 +72,7 @@ class Coordinator(BaseAgent):
     async def _add_tasks_to_tracker(self, tasks: List[Task]) -> List[str]:
         tracker_ids = []
         for task in tasks:
-            tracker_id = await self.tracker_service.create_issue(task)
+            tracker_id = self.tracker_service.create_issue(task)
             if tracker_id:
                 tracker_ids.append(tracker_id)
         return tracker_ids

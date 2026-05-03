@@ -169,7 +169,7 @@ class YandexGPTService:
                     "id": "<uuid4>",
                     "title": "Краткое название",
                     "description": "Что нужно сделать",
-                    "task_type": "task|bug|newFeature",
+                    "task_type": "bug|newFeature|improvement|refactoring|epic|story|changeRequest|incident|serviceRequest|release|project|leave|businessTrip|changes|documents|request|vacancy|applicant|goal|milestone",
                     "acceptance_criteria": ["критерий 1", "критерий 2"],
                     "priority": "minor|normal|critical"
                     }}
@@ -184,7 +184,7 @@ class YandexGPTService:
                     "id": {"type": "string"},
                     "title": {"type": "string"},
                     "description": {"type": "string"},
-                    "task_type": {"type": "string", "enum": ["task","bug","newFeature"]},
+                    "task_type": {"type": "string", "enum": ["bug", "newFeature", "improvement", "refactoring", "epic", "story", "changeRequest", "incident", "serviceRequest", "release", "project", "leave", "businessTrip", "changes", "documents", "request", "vacancy", "applicant", "goal", "milestone"]},
                     "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
                     "priority": {"type": "string", "enum": ["minor","normal","critical"]},
                 },

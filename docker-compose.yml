@@ -1,3 +1,6 @@
+include:
+  - docker-compose-postgres.yml
+
 services:
   teamlead-redis:
     container_name: teamlead-redis
@@ -37,7 +40,6 @@ services:
       replicas: 1
     networks:
       - teamlead-backend
-      - postgres
 
   teamlead-solver_conservative:
     container_name: teamlead-solver_conservative
@@ -94,8 +96,19 @@ services:
     environment:
       - REDIS_URL=redis://teamlead-redis:6379/0
       - NUM_SOLVERS=3
+      - FUZZY_API_URL=http://teamlead-fuzzy:8000
     deploy:
       replicas: 1
+    networks:
+      - teamlead-backend 
+    
+  teamlead-fuzzy:
+    stop_grace_period: 30s
+    stop_signal: SIGTERM
+    container_name: teamlead-fuzzy
+    build:
+      context: ./fuzzy
+      dockerfile: Dockerfile
     networks:
       - teamlead-backend
 
@@ -108,13 +121,13 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - teamlead-redis
+      - postgres
     environment:
       - REDIS_URL=redis://teamlead-redis:6379/0
     ports:
       - "8001:8000"
     networks:
       - teamlead-backend
-      - postgres
 
   teamlead-client:
     stop_grace_period: 30s
@@ -134,9 +147,7 @@ services:
 networks:
   teamlead-backend:
     driver: bridge
-  postgres:
-    external: true
-    name: shared_postgres
-    
+
 volumes:
-  teamlead-redis-data:
+  teamlead-data:
+  teamlead-redis-data: 

@@ -17,7 +17,7 @@ db_config= DatabaseConfig(
     'teamlead-analysis',
     'postgres',
     'postgres',
-    '123Secret_a',
+    'postgres',
     5432
 )
 db_connection = DatabaseConnection(db_config)

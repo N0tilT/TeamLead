@@ -1,4 +1,5 @@
 from tracker_service import YandexTrackerService
+from models import Task
 import os
 import asyncio
 from dotenv import load_dotenv 
@@ -11,8 +12,9 @@ tracker_service = YandexTrackerService(
 )
 
 async def main():
-    issue = await tracker_service.get_issue('SHARD-20')
+    issue = tracker_service.get_issue('SHARD-395')
     print(issue)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

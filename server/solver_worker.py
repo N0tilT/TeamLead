@@ -35,35 +35,52 @@ redis = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 TASK_QUEUE = "task_queue"
 NEW_TASK_CHANNEL = "new_task"
 SOLUTION_CHANNEL = "solution_generated"
+def _extract_field_value(field_value, default="unknown"):
+    """Извлекает значение из поля, которое может быть строкой или словарём."""
+    if isinstance(field_value, dict):
+        return field_value.get("name") or field_value.get("key", default)
+    elif isinstance(field_value, str) and field_value:
+        return field_value
+    return default
 
 async def process_task_from_event(data: Dict):
     issue_key = data["issue_key"]
     processed_key = f"processed_tasks:{STYLE}:{issue_key}"
+    
     if await redis.exists(processed_key):
         logger.debug(f"Skipping duplicate for {issue_key} in {STYLE}")
         return False
     await redis.set(processed_key, "1", ex=3600)
 
-    issue = await tracker_service.get_issue(issue_key)
-    if not issue:
+    issue = tracker_service.get_issue(issue_key)
+    if not issue or not issue.get("key"):
+        logger.error(f"Failed to fetch issue {issue_key} or missing 'key' field")
         return False
+    
+    logger.debug(f"Issue fields: {list(issue.keys())}")
+    
     task = Task(
-        id=issue["id"],
-        title=issue["summary"],
-        description=issue["description"],
-        task_type=issue.get("type", {}).get("key", "task"),
+        id=issue.get("key") or issue.get("id"),
+        title=issue.get("summary", "No title"),
+        description=issue.get("description", ""),
+        task_type=_extract_field_value(issue.get("type"), default="task").lower(),
         acceptance_criteria=[],
-        priority=issue.get("priority", {}).get("key", "normal")
+        priority=_extract_field_value(issue.get("priority"), default="normal").lower()
     )
+    
     try:
         solution = await solver.generate_solution(task)
-        await redis.publish(SOLUTION_CHANNEL, json.dumps({"issue_key": issue_key, "style": STYLE, "solution": solution}))
+        await redis.publish(SOLUTION_CHANNEL, json.dumps({
+            "issue_key": issue_key, 
+            "style": STYLE, 
+            "solution": solution
+        }))
         logger.info(f"Generated solution for {issue_key} with style {STYLE}")
         return True
     except Exception as e:
-        logger.error(f"Failed solver for {issue_key}: {e}")
+        logger.error(f"Failed solver for {issue_key}: {e}", exc_info=True)
         await redis.delete(processed_key)
-    return False
+        return False
 
 async def main():
     pubsub = redis.pubsub()
