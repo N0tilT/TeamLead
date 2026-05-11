@@ -18,6 +18,13 @@ export default defineConfig({
         secure: false,
         ws: true,
         logLevel: 'debug'
+      },
+      '/fuzzy': {
+        target: 'http://teamlead-fuzzy:8000',
+        changeOrigin: true,
+        secure: false,
+        logLevel: 'debug',
+        rewrite: (path) => path.replace(/^\/fuzzy/, '')
       }
     }
   }

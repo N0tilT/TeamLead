@@ -109,6 +109,16 @@ services:
     build:
       context: ./fuzzy
       dockerfile: Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      - FUZZY_DB_NAME=teamlead-analysis
+      - FUZZY_DB_HOST=postgres
+      - FUZZY_DB_USER=postgres
+      - FUZZY_DB_PASSWORD=postgres
+      - FUZZY_DB_PORT=5432
+    ports:
+      - "8002:8000"
     networks:
       - teamlead-backend
 

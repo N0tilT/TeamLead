@@ -1,15 +1,13 @@
-from typing import Dict, List
-
-TASK_TYPE_WEIGHTS: Dict[str, float] = {
+TASK_TYPE_WEIGHTS = {
     "feature": 1.0,
-    "bugfix": 0.8,
-    "tech_debt": 1.2,
-    "docs": 0.6
+    "bugfix": 0.7,
+    "refactor": 0.8,
+    "research": 1.2
 }
 
-MITIGATION_STRATEGIES: Dict[str, List[str]] = {
-    "Low": ["standard_review"],
-    "Medium": ["add_tests", "peer_review"],
-    "High": ["spike", "pair_programming", "add_tests"],
-    "Critical": ["prototype", "refactor_prereq", "daily_sync"]
+MITIGATION_STRATEGIES = {
+    "Low": ["Standard sprint planning", "Pair programming optional"],
+    "Medium": ["Code review mandatory", "Break into subtasks", "Add monitoring"],
+    "High": ["Architecture review", "Dedicated QA resource", "Phased rollout"],
+    "Critical": ["Executive approval required", "Dedicated task force", "Rollback plan mandatory"]
 }

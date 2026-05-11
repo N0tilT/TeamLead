@@ -1,0 +1,67 @@
+{
+  "_path": "configs/risk_config.json",
+  "universes": {
+    "volume": [0, 1000, 1],
+    "dependencies": [0, 15, 1],
+    "expertise": [1, 6, 0.1],
+    "uncertainty": [0, 100, 1]
+  },
+  "antecedents": {
+    "volume": {
+      "low": {"type": "trimf", "params": [0, 0, 200], "optimizable": true},
+      "med": {"type": "trimf", "params": [100, 500, 800], "optimizable": true},
+      "high": {"type": "trimf", "params": [600, 1000, 1000], "optimizable": true}
+    },
+    "dependencies": {
+      "low": {"type": "trapmf", "params": [0, 0, 3, 6], "optimizable": true},
+      "mod": {"type": "trimf", "params": [4, 8, 12], "optimizable": true},
+      "high": {"type": "trapmf", "params": [9, 15, 15, 15], "optimizable": true}
+    },
+    "expertise": {
+      "low": {"type": "gaussmf", "params": [2.0, 0.7], "optimizable": true},
+      "med": {"type": "gaussmf", "params": [3.5, 0.7], "optimizable": true},
+      "high": {"type": "gaussmf", "params": [5.0, 0.7], "optimizable": true}
+    },
+    "uncertainty": {
+      "clear": {"type": "trimf", "params": [0, 0, 40], "optimizable": true},
+      "part": {"type": "trimf", "params": [30, 60, 80], "optimizable": true},
+      "blurry": {"type": "trimf", "params": [60, 100, 100], "optimizable": true}
+    }
+  },
+  "consequent": {
+    "name": "risk",
+    "universe": [0, 100, 1],
+    "defuzzify_method": "centroid",
+    "mfs": {
+      "low": {"type": "trimf", "params": [0, 0, 25], "optimizable": true},
+      "med": {"type": "trimf", "params": [15, 50, 70], "optimizable": true},
+      "high": {"type": "trimf", "params": [60, 85, 100], "optimizable": true},
+      "crit": {"type": "trimf", "params": [80, 100, 100], "optimizable": true}
+    }
+  },
+  "rules": [
+    "volume['low'] & expertise['high'] => risk['low']",
+    "volume['low'] & uncertainty['clear'] => risk['low']",
+    "dependencies['low'] & expertise['high'] => risk['low']",
+    "expertise['high'] & uncertainty['clear'] => risk['low']",
+    "volume['med'] & expertise['med'] => risk['med']",
+    "dependencies['mod'] & uncertainty['clear'] => risk['low']",
+    "volume['med'] & uncertainty['part'] => risk['med']",
+    "dependencies['low'] & uncertainty['part'] => risk['med']",
+    "expertise['med'] & uncertainty['clear'] => risk['low']",
+    "dependencies['mod'] & expertise['med'] => risk['med']",
+    "volume['high'] & expertise['low'] => risk['high']",
+    "uncertainty['blurry'] & expertise['med'] => risk['high']",
+    "dependencies['high'] => risk['med']",
+    "uncertainty['part'] & expertise['low'] => risk['high']",
+    "volume['high'] & uncertainty['part'] => risk['high']",
+    "dependencies['mod'] & expertise['low'] => risk['med']",
+    "uncertainty['blurry'] & dependencies['mod'] => risk['high']",
+    "volume['high'] & expertise['med'] => risk['high']",
+    "uncertainty['part'] & dependencies['high'] => risk['high']",
+    "volume['high'] & uncertainty['blurry'] & expertise['low'] => risk['crit']",
+    "dependencies['high'] & uncertainty['blurry'] => risk['crit']",
+    "volume['high'] & dependencies['high'] => risk['high']",
+    "expertise['low'] & uncertainty['blurry'] => risk['high']"
+  ]
+}

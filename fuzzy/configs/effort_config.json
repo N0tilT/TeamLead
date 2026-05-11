@@ -1,0 +1,67 @@
+{
+  "_path": "configs/effort_config.json",
+  "universes": {
+    "volume": [0, 1000, 1],
+    "dependencies": [0, 15, 1],
+    "expertise": [1, 6, 0.1],
+    "uncertainty": [0, 100, 1]
+  },
+  "antecedents": {
+    "volume": {
+      "low": {"type": "trimf", "params": [0, 0, 200], "optimizable": true},
+      "med": {"type": "trimf", "params": [100, 500, 800], "optimizable": true},
+      "high": {"type": "trimf", "params": [600, 1000, 1000], "optimizable": true}
+    },
+    "dependencies": {
+      "low": {"type": "trapmf", "params": [0, 0, 3, 6], "optimizable": true},
+      "mod": {"type": "trimf", "params": [4, 8, 12], "optimizable": true},
+      "high": {"type": "trapmf", "params": [9, 15, 15, 15], "optimizable": true}
+    },
+    "expertise": {
+      "low": {"type": "gaussmf", "params": [2.0, 0.7], "optimizable": true},
+      "med": {"type": "gaussmf", "params": [3.5, 0.7], "optimizable": true},
+      "high": {"type": "gaussmf", "params": [5.0, 0.7], "optimizable": true}
+    },
+    "uncertainty": {
+      "clear": {"type": "trimf", "params": [0, 0, 40], "optimizable": true},
+      "part": {"type": "trimf", "params": [30, 60, 80], "optimizable": true},
+      "blurry": {"type": "trimf", "params": [60, 100, 100], "optimizable": true}
+    }
+  },
+  "consequent": {
+    "name": "complexity",
+    "universe": [0, 100, 1],
+    "defuzzify_method": "centroid",
+    "mfs": {
+      "low": {"type": "trimf", "params": [0, 0, 30], "optimizable": true},
+      "med": {"type": "trimf", "params": [20, 50, 70], "optimizable": true},
+      "high": {"type": "trimf", "params": [60, 85, 100], "optimizable": true},
+      "crit": {"type": "trimf", "params": [85, 100, 100], "optimizable": true}
+    }
+  },
+  "rules": [
+    "volume['low'] & expertise['high'] => complexity['low']",
+    "volume['low'] & uncertainty['clear'] => complexity['low']",
+    "dependencies['low'] & expertise['high'] => complexity['low']",
+    "expertise['high'] & uncertainty['clear'] => complexity['low']",
+    "volume['med'] & expertise['med'] => complexity['med']",
+    "dependencies['mod'] & uncertainty['clear'] => complexity['med']",
+    "volume['med'] & uncertainty['part'] => complexity['med']",
+    "dependencies['low'] & uncertainty['part'] => complexity['med']",
+    "expertise['med'] & uncertainty['clear'] => complexity['med']",
+    "dependencies['mod'] & expertise['med'] => complexity['med']",
+    "volume['high'] & expertise['low'] => complexity['crit']",
+    "uncertainty['blurry'] & expertise['med'] => complexity['high']",
+    "dependencies['high'] => complexity['high']",
+    "uncertainty['part'] & expertise['low'] => complexity['high']",
+    "volume['high'] & uncertainty['part'] => complexity['high']",
+    "dependencies['mod'] & expertise['low'] => complexity['high']",
+    "uncertainty['blurry'] & dependencies['mod'] => complexity['high']",
+    "volume['high'] & expertise['med'] => complexity['high']",
+    "uncertainty['part'] & dependencies['high'] => complexity['high']",
+    "volume['high'] & uncertainty['blurry'] & expertise['low'] => complexity['crit']",
+    "dependencies['high'] & uncertainty['blurry'] => complexity['crit']",
+    "volume['high'] & dependencies['high'] => complexity['crit']",
+    "expertise['low'] & uncertainty['blurry'] => complexity['crit']"
+  ]
+}

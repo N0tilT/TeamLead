@@ -6,3 +6,7 @@ numpy
 scikit-learn
 packaging
 networkx
+pandas
+psycopg2-binary
+loguru
+optuna
